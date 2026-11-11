@@ -86,17 +86,25 @@ export async function deleteClient(form: FormData) {
 
 /* ---------- Galerias ---------- */
 
+/** Cliente opcional: vazio = galeria sem cliente (atribuída depois). */
+async function clientFromForm(form: FormData): Promise<{ id: string | null } | { error: string }> {
+  const clientId = str(form, "client_id");
+  if (!clientId) return { id: null };
+  if (!isUuid(clientId) || !(await one("select 1 from users where id = $1 and role = 'client'", [clientId])))
+    return { error: "Cliente não encontrado." };
+  return { id: clientId };
+}
+
 export async function createGallery(_: ActionState, form: FormData): Promise<ActionState> {
   await requireAdmin();
-  const clientId = str(form, "client_id");
+  const client = await clientFromForm(form);
+  if ("error" in client) return { error: client.error };
   const title = str(form, "title", 160);
-  if (!isUuid(clientId) || !(await one("select 1 from users where id = $1 and role = 'client'", [clientId])))
-    return { error: "Escolha o cliente." };
   if (!title) return { error: "Dê um nome à galeria." };
   const row = await one<{ id: string }>(
     `insert into galleries (client_id, title, description, event_date, expires_at, published)
      values ($1,$2,$3,$4,$5,$6) returning id`,
-    [clientId, title, str(form, "description") || null, str(form, "event_date") || null, str(form, "expires_at") || null, form.get("published") === "on"],
+    [client.id, title, str(form, "description") || null, str(form, "event_date") || null, str(form, "expires_at") || null, form.get("published") === "on"],
   );
   redirect(`/admin/galerias/${row!.id}`);
 }
@@ -104,17 +112,40 @@ export async function createGallery(_: ActionState, form: FormData): Promise<Act
 export async function updateGallery(_: ActionState, form: FormData): Promise<ActionState> {
   await requireAdmin();
   const id = str(form, "id");
-  const clientId = str(form, "client_id");
   const title = str(form, "title", 160);
   if (!isUuid(id)) return { error: "Galeria inválida." };
-  if (!isUuid(clientId)) return { error: "Escolha o cliente." };
+  const client = await clientFromForm(form);
+  if ("error" in client) return { error: client.error };
   if (!title) return { error: "Dê um nome à galeria." };
   await query(
     `update galleries set client_id=$2, title=$3, description=$4, event_date=$5, expires_at=$6, published=$7 where id=$1`,
-    [id, clientId, title, str(form, "description") || null, str(form, "event_date") || null, str(form, "expires_at") || null, form.get("published") === "on"],
+    [id, client.id, title, str(form, "description") || null, str(form, "event_date") || null, str(form, "expires_at") || null, form.get("published") === "on"],
   );
-  revalidatePath(`/admin/galerias/${id}`);
-  return { ok: "Galeria salva." };
+  revalidatePath("/admin", "layout");
+  return { ok: client.id ? "Galeria salva." : "Galeria salva, sem cliente." };
+}
+
+/** Pelo cadastro do cliente: atribui uma galeria a ele (tirando de quem tinha). */
+export async function assignGallery(_: ActionState, form: FormData): Promise<ActionState> {
+  await requireAdmin();
+  const clientId = str(form, "client_id");
+  const galleryId = str(form, "gallery_id");
+  if (!isUuid(clientId) || !(await one("select 1 from users where id = $1 and role = 'client'", [clientId])))
+    return { error: "Cliente inválido." };
+  if (!isUuid(galleryId)) return { error: "Escolha a galeria." };
+  const row = await one("update galleries set client_id = $2 where id = $1 returning id", [galleryId, clientId]);
+  if (!row) return { error: "Galeria não encontrada." };
+  revalidatePath("/admin", "layout");
+  return { ok: "Galeria atribuída." };
+}
+
+/** Pelo cadastro do cliente: tira a galeria dele (ela continua existindo, sem cliente). */
+export async function unassignGallery(form: FormData) {
+  await requireAdmin();
+  const galleryId = str(form, "gallery_id");
+  if (!isUuid(galleryId)) return;
+  await query("update galleries set client_id = null where id = $1", [galleryId]);
+  revalidatePath("/admin", "layout");
 }
 
 export async function deleteGallery(form: FormData) {

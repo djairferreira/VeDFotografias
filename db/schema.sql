@@ -45,6 +45,8 @@ create table if not exists galleries (
   created_at timestamptz not null default now()
 );
 create index if not exists galleries_client_idx on galleries (client_id);
+-- Galeria pode existir sem cliente e ser atribuída depois.
+alter table galleries alter column client_id drop not null;
 
 create table if not exists photos (
   id uuid primary key default gen_random_uuid(),

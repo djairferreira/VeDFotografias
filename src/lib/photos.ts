@@ -21,7 +21,7 @@ export type Photo = {
 
 export type Gallery = {
   id: string;
-  client_id: string;
+  client_id: string | null;
   title: string;
   description: string | null;
   event_date: string | null;

@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import { createGallery, updateGallery, type ActionState } from "@/app/actions/admin";
 
 type Gallery = {
-  id: string; client_id: string; title: string; description: string | null;
+  id: string; client_id: string | null; title: string; description: string | null;
   event_date: string | null; expires_at: string | null; published: boolean;
 };
 
@@ -24,12 +24,13 @@ export function GalleryForm({
       {gallery && <input type="hidden" name="id" value={gallery.id} />}
       <label className="field">
         <span>Cliente</span>
-        <select id="g-client" name="client_id" defaultValue={gallery?.client_id ?? defaultClient ?? ""} required>
-          <option value="" disabled>Escolha o cliente</option>
+        <select id="g-client" name="client_id" defaultValue={gallery?.client_id ?? defaultClient ?? ""}>
+          <option value="">Sem cliente (atribuir depois)</option>
           {clients.map((c) => (
             <option key={c.id} value={c.id}>{c.name} · {c.email}</option>
           ))}
         </select>
+        <small>Só o cliente escolhido vê a galeria. Dá para trocar ou atribuir depois.</small>
       </label>
       <label className="field">
         <span>Nome da galeria</span>

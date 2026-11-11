@@ -15,8 +15,8 @@ export const metadata: Metadata = { title: "Galeria" };
 export default async function GalleryAdminPage({ params }: PageProps<"/admin/galerias/[id]">) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const gallery = await one<Gallery & { client_name: string }>(
-    "select g.*, u.name client_name from galleries g join users u on u.id = g.client_id where g.id = $1",
+  const gallery = await one<Gallery & { client_name: string | null }>(
+    "select g.*, u.name client_name from galleries g left join users u on u.id = g.client_id where g.id = $1",
     [id],
   );
   if (!gallery) notFound();
@@ -37,12 +37,25 @@ export default async function GalleryAdminPage({ params }: PageProps<"/admin/gal
           <Link href="/admin/galerias" className="crumb">← Galerias</Link>
           <h1 className="display">{gallery.title}</h1>
           <p>
-            De <Link href={`/admin/clientes/${gallery.client_id}`}>{gallery.client_name}</Link> · {photos.length} fotos ·{" "}
+            {gallery.client_id ? (
+              <>
+                De <Link href={`/admin/clientes/${gallery.client_id}`}>{gallery.client_name}</Link>
+              </>
+            ) : (
+              "Sem cliente: escolha em Dados da galeria"
+            )}{" "}
+            · {photos.length} fotos ·{" "}
             {formatBytes(totals?.bytes ?? 0)} · {totals?.downloads ?? 0} downloads pelo cliente
           </p>
         </div>
         <div className="actions">
-          {gallery.published ? <span className="pill pill-on">Visível ao cliente</span> : <span className="pill pill-off">Oculta</span>}
+          {!gallery.client_id ? (
+            <span className="pill pill-warn">Sem cliente</span>
+          ) : gallery.published ? (
+            <span className="pill pill-on">Visível ao cliente</span>
+          ) : (
+            <span className="pill pill-off">Oculta</span>
+          )}
         </div>
       </header>
 

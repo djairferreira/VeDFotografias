@@ -7,6 +7,7 @@ import { formatDate } from "@/lib/photos";
 import { deleteClient } from "@/app/actions/admin";
 import { EditClientForm, ResetPassword } from "@/components/admin/ClientForms";
 import { ConfirmDelete } from "@/components/admin/ConfirmDelete";
+import { AssignGallery, UnassignGallery } from "@/components/admin/AssignGallery";
 
 export const metadata: Metadata = { title: "Cliente" };
 
@@ -23,6 +24,13 @@ export default async function ClientPage({ params }: PageProps<"/admin/clientes/
             (select count(*) from photos p where p.gallery_id = g.id) photos,
             (select coalesce(sum(photo_count), 0) from downloads d where d.gallery_id = g.id) downloads
        from galleries g where g.client_id = $1 order by g.created_at desc`,
+    [id],
+  );
+  const others = await query<{ id: string; title: string; owner: string | null; photos: string }>(
+    `select g.id, g.title, u.name owner, (select count(*) from photos p where p.gallery_id = g.id) photos
+       from galleries g left join users u on u.id = g.client_id
+      where g.client_id is distinct from $1
+      order by (g.client_id is null) desc, g.created_at desc`,
     [id],
   );
 
@@ -47,20 +55,28 @@ export default async function ClientPage({ params }: PageProps<"/admin/clientes/
         {galleries.length ? (
           <div className="cards">
             {galleries.map((g) => (
-              <Link key={g.id} href={`/admin/galerias/${g.id}`} className="card">
-                <div className="card-img">
-                  {g.cover_photo_id && <img src={`/api/media/${g.cover_photo_id}/mini`} alt="" loading="lazy" />}
-                  {!g.published && <span className="pill pill-off">Oculta</span>}
-                </div>
-                <span className="card-meta">{g.photos} fotos · {g.downloads} baixadas</span>
-                <h3>{g.title}</h3>
-                {g.event_date && <p>{formatDate(g.event_date)}</p>}
-              </Link>
+              <div key={g.id} className="card">
+                <Link href={`/admin/galerias/${g.id}`} className="card" style={{ gap: 12 }}>
+                  <div className="card-img">
+                    {g.cover_photo_id && <img src={`/api/media/${g.cover_photo_id}/mini`} alt="" loading="lazy" />}
+                    {!g.published && <span className="pill pill-off">Oculta</span>}
+                  </div>
+                  <span className="card-meta">{g.photos} fotos · {g.downloads} baixadas</span>
+                  <h3>{g.title}</h3>
+                  {g.event_date && <p>{formatDate(g.event_date)}</p>}
+                </Link>
+                <UnassignGallery galleryId={g.id} />
+              </div>
             ))}
           </div>
         ) : (
           <div className="empty"><p>Nenhuma galeria para este cliente.</p></div>
         )}
+      </section>
+
+      <section className="block">
+        <div className="block-head"><h2>Atribuir galeria</h2></div>
+        <AssignGallery clientId={client.id} options={others} />
       </section>
 
       <section className="block">

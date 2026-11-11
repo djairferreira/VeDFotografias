@@ -16,17 +16,10 @@ export default async function NewGalleryPage({ searchParams }: PageProps<"/admin
         <div>
           <Link href="/admin/galerias" className="crumb">← Galerias</Link>
           <h1 className="display"><em>Nova</em> galeria</h1>
-          <p>Crie a galeria e, na tela seguinte, arraste as fotos.</p>
+          <p>Crie a galeria e, na tela seguinte, arraste as fotos. O cliente pode ser escolhido agora ou depois.</p>
         </div>
       </header>
-      {clients.length ? (
-        <GalleryForm clients={clients} defaultClient={cliente} />
-      ) : (
-        <div className="empty">
-          <p>Cadastre um cliente antes de criar a galeria.</p>
-          <Link href="/admin/clientes/novo" className="btn btn-solid">Novo cliente</Link>
-        </div>
-      )}
+      <GalleryForm clients={clients} defaultClient={cliente} />
     </>
   );
 }
