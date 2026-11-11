@@ -76,7 +76,7 @@
 .stat span { font-family: var(--f-label); font-size: 9.5px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--ink-soft); }
 a.stat:hover { background: var(--sand-soft); }
 
-.block { display: grid; gap: 16px; }
+.block { display: grid; gap: 16px; align-content: start; }
 .block-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .block-head h2 { font-family: var(--f-display); font-weight: 400; font-size: 24px; margin: 0; }
 .block-head a { font-family: var(--f-label); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-soft); }

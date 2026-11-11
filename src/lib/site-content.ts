@@ -49,6 +49,8 @@ export type SiteContent = {
   contactText: string;
   email: string;
   phone: string;
+  whatsapp: string;
+  whatsappMessage: string;
   instagram: string;
   city: string;
   images: Partial<Record<ImageSlot, string>>; // chave no armazenamento
@@ -105,6 +107,8 @@ export const DEFAULT_CONTENT: SiteContent = {
   contactText: "Responda o formulário e retornamos em até dois dias úteis com datas e valores.",
   email: "",
   phone: "",
+  whatsapp: "",
+  whatsappMessage: "Olá, gostaria de solicitar um orçamento!",
   instagram: "",
   city: "",
   images: {},
@@ -130,4 +134,12 @@ export async function saveSiteContent(value: SiteContent) {
 export function imageUrl(content: SiteContent, slot: ImageSlot) {
   const key = content.images[slot];
   return key ? `/api/site-image/${slot}?v=${encodeURIComponent(key.slice(-12))}` : IMAGE_SLOTS[slot].fallback;
+}
+
+/** Link do WhatsApp com a mensagem pronta. Número só com dígitos; sem DDI assume Brasil (55). */
+export function whatsappLink(content: SiteContent) {
+  let n = content.whatsapp.replace(/\D/g, "");
+  if (n.length === 10 || n.length === 11) n = "55" + n;
+  const text = encodeURIComponent(content.whatsappMessage || DEFAULT_CONTENT.whatsappMessage);
+  return n ? `https://wa.me/${n}?text=${text}` : `https://wa.me/?text=${text}`;
 }

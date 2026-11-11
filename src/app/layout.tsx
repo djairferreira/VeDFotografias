@@ -23,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" className={`${display.variable} ${body.variable} ${label.variable} ${script.variable}`}>
+    <html lang="pt-BR" suppressHydrationWarning className={`${display.variable} ${body.variable} ${label.variable} ${script.variable}`}>
       <body>{children}</body>
     </html>
   );

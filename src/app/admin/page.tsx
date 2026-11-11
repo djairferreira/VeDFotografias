@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { query, one } from "@/lib/db";
 import { formatBytes, formatDate } from "@/lib/photos";
+import { getUsage, usd } from "@/lib/usage";
 
 export default async function AdminHome() {
-  const [stats, recentDownloads, messages] = await Promise.all([
+  const [stats, recentDownloads, messages, usage] = await Promise.all([
     one<{ clients: string; galleries: string; photos: string; bytes: string; downloads: string }>(
       `select (select count(*) from users where role = 'client') clients,
               (select count(*) from galleries) galleries,
@@ -19,6 +20,7 @@ export default async function AdminHome() {
     query<{ id: string; name: string; service: string | null; created_at: string; read: boolean }>(
       "select id, name, service, created_at, read from inquiries order by created_at desc limit 6",
     ),
+    getUsage(1),
   ]);
 
   return (
@@ -29,7 +31,10 @@ export default async function AdminHome() {
           <h1 className="display">
             <em>Bom</em> trabalho
           </h1>
-          <p>{formatBytes(stats?.bytes ?? 0)} em fotos guardadas.</p>
+          <p>
+            {formatBytes(stats?.bytes ?? 0)} em originais guardados · Neon estimado em{" "}
+            <Link href="/admin/armazenamento">{usd(usage.neonTotal)} por mês</Link>
+          </p>
         </div>
         <div className="actions">
           <Link href="/admin/clientes/novo" className="btn btn-quiet">Novo cliente</Link>

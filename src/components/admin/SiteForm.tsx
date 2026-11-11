@@ -69,6 +69,13 @@ const GROUPS: Group[] = [
     images: ["hello"],
   },
   {
+    title: "Botão do WhatsApp",
+    fields: [
+      { k: "whatsapp", label: "Número do WhatsApp com DDD (ex.: 11 99999-0000)" },
+      { k: "whatsappMessage", label: "Mensagem que já vai escrita", long: true },
+    ],
+  },
+  {
     title: "Contato e rodapé",
     fields: [
       { k: "contactTitle", label: "Título do contato" },
