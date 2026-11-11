@@ -12,7 +12,7 @@ const GROUPS: Group[] = [
   {
     title: "Marca e topo",
     fields: [
-      { k: "brand", label: "Nome no selo" },
+      { k: "brand", label: "Nome da empresa (aba do navegador e rodapé)" },
       { k: "announcement", label: "Faixa do topo" },
       { k: "heroEyebrow", label: "Frase da capa" },
       { k: "heroButton", label: "Botão da capa" },

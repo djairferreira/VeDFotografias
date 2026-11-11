@@ -5,6 +5,7 @@ import { one } from "@/lib/db";
 import { getSiteContent } from "@/lib/site-content";
 import { logout } from "@/app/actions/auth";
 import { SideNav } from "@/components/admin/SideNav";
+import { Logo } from "@/components/Logo";
 import "../panel.css";
 
 export const metadata: Metadata = { title: { default: "Painel", template: "%s · Painel" }, robots: { index: false } };
@@ -19,7 +20,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
     <div className="panel">
       <aside className="side">
         <Link href="/admin" className="side-brand">
-          {c.brand}
+          <Logo name={c.brand} height={76} />
           <small>Painel</small>
         </Link>
         <SideNav unread={Number(unread?.n ?? 0)} />

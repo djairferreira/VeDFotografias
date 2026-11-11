@@ -55,7 +55,7 @@ export type SiteContent = {
 };
 
 export const DEFAULT_CONTENT: SiteContent = {
-  brand: "CAPTURE",
+  brand: "Victor e Duda Fotografias",
   announcement: "Agenda aberta para a temporada de verão",
   heroEyebrow: "Capturando a beleza da vida",
   heroButton: "Solicitar orçamento",
@@ -95,18 +95,18 @@ export const DEFAULT_CONTENT: SiteContent = {
       author: "Família Tavares",
     },
   ],
-  helloSide: "Prazer, sou eu",
+  helloSide: "Prazer, Victor & Duda",
   helloItalic: "Oh,",
   helloTitle: "olá",
   helloText:
-    "Sou fotógrafa há mais de dez anos e ainda me emociono a cada entrega. Acredito em luz natural, em gente de verdade e em fotos que envelhecem bem. Se você chegou até aqui, adoraria ouvir a sua história.",
+    "Somos Victor e Duda, um casal que fotografa junto e ainda se emociona a cada entrega. Acreditamos em luz natural, em gente de verdade e em fotos que envelhecem bem. Se você chegou até aqui, adoraríamos ouvir a sua história.",
   helloButton: "Vamos conversar",
   contactTitle: "Conte sobre o seu dia",
   contactText: "Responda o formulário e retornamos em até dois dias úteis com datas e valores.",
-  email: "contato@capture.com.br",
-  phone: "(11) 99999-0000",
-  instagram: "@capture.foto",
-  city: "São Paulo · Brasil",
+  email: "",
+  phone: "",
+  instagram: "",
+  city: "",
   images: {},
 };
 

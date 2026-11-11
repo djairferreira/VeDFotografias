@@ -5,6 +5,7 @@ import { getUser } from "@/lib/auth";
 import { Testimonials } from "@/components/site/Testimonials";
 import { InquiryForm } from "@/components/site/InquiryForm";
 import "./site.css";
+import { Logo } from "@/components/Logo";
 
 const Arrow = () => (
   <svg viewBox="0 0 34 10" aria-hidden="true">
@@ -34,8 +35,8 @@ export default async function Home() {
           <a href="#portfolio">Portfólio</a>
           <a href="#contato">Contato</a>
         </nav>
-        <Link href="/" className="seal" aria-label={c.brand}>
-          <span>{c.brand}</span>
+        <Link href="/" className="seal">
+          <Logo name={c.brand} height={104} />
         </Link>
       </header>
 
@@ -134,7 +135,7 @@ export default async function Home() {
         {(["service1", "aboutLarge", "hero", "service3", "aboutSmall", "service2"] as const).map((s) => (
           <img key={s} src={img(s)} alt="" loading="lazy" />
         ))}
-        <p className="portfolio-tag">{c.instagram}</p>
+        {c.instagram && <p className="portfolio-tag">{c.instagram}</p>}
       </section>
 
       <section className="contact" id="contato">
@@ -144,25 +145,27 @@ export default async function Home() {
           <span className="rule" aria-hidden="true" />
           <p>{c.contactText}</p>
           <dl className="contact-list">
-            <div>
-              <dt>E-mail</dt>
-              <dd>{c.email}</dd>
-            </div>
-            <div>
-              <dt>Telefone</dt>
-              <dd>{c.phone}</dd>
-            </div>
-            <div>
-              <dt>Instagram</dt>
-              <dd>{c.instagram}</dd>
-            </div>
+            {(
+              [
+                ["E-mail", c.email],
+                ["Telefone", c.phone],
+                ["Instagram", c.instagram],
+              ] as const
+            )
+              .filter(([, v]) => v)
+              .map(([k, v]) => (
+                <div key={k}>
+                  <dt>{k}</dt>
+                  <dd>{v}</dd>
+                </div>
+              ))}
           </dl>
         </div>
         <InquiryForm services={[c.service1, c.service2, c.service3]} />
       </section>
 
       <footer className="footer">
-        <span className="footer-brand">{c.brand}</span>
+        <Logo name={c.brand} height={92} className="footer-brand" />
         <nav aria-label="Rodapé">
           <a href="#sobre">Sobre</a>
           <a href="#servicos">Pacotes</a>
@@ -171,7 +174,7 @@ export default async function Home() {
           <Link href={clientHref}>Área do cliente</Link>
         </nav>
         <p>
-          {c.city} · © {new Date().getFullYear()} {c.brand}
+          {c.city ? `${c.city} · ` : ""}© {new Date().getFullYear()} {c.brand}
         </p>
       </footer>
     </div>

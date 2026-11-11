@@ -4,6 +4,7 @@ import { requireClient } from "@/lib/auth";
 import { getSiteContent } from "@/lib/site-content";
 import { logout } from "@/app/actions/auth";
 import { ClientNav } from "@/components/ClientNav";
+import { Logo } from "@/components/Logo";
 import "../panel.css";
 
 export const metadata: Metadata = { title: { default: "Minhas galerias", template: "%s" }, robots: { index: false } };
@@ -14,7 +15,7 @@ export default async function ClientLayout({ children }: LayoutProps<"/cliente">
     <div className="client">
       <header className="client-head">
         <ClientNav />
-        <Link href="/" className="client-brand">{c.brand}</Link>
+        <Link href="/" className="client-brand"><Logo name={c.brand} height={64} /></Link>
         <div className="right">
           <span>{user.name.split(" ")[0]}</span>
           <form action={logout}>

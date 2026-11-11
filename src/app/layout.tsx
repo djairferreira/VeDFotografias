@@ -15,9 +15,8 @@ const script = Nothing_You_Could_Do({ variable: "--font-script", subsets: ["lati
 
 export async function generateMetadata(): Promise<Metadata> {
   const c = await getSiteContent();
-  const name = c.brand.charAt(0) + c.brand.slice(1).toLowerCase();
   return {
-    title: { default: `${name} · Fotografia`, template: `%s · ${name}` },
+    title: { default: c.brand, template: `%s · ${c.brand}` },
     description: c.introText,
   };
 }

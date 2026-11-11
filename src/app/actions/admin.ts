@@ -190,7 +190,6 @@ export async function saveSite(_: ActionState, form: FormData): Promise<ActionSt
     const v = str(form, k, 3000);
     (next as Record<string, unknown>)[k] = v || DEFAULT_CONTENT[k];
   }
-  next.brand = next.brand.toUpperCase();
 
   const testimonials = [];
   for (let i = 0; i < 6; i++) {

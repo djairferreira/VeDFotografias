@@ -1,4 +1,4 @@
-# VeD Fotografias · banco de fotos
+# Victor e Duda Fotografias · banco de fotos
 
 Site de fotógrafo com área do cliente. O admin cadastra clientes, cria galerias e envia as fotos; cada cliente entra com e-mail e senha e baixa os originais (uma a uma, as selecionadas ou tudo em .zip).
 
