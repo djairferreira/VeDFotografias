@@ -1,49 +1,128 @@
+/* Layout: editorial de fotógrafo — faixas de areia e branco alternadas, fotos que se sobrepõem,
+   títulos em caixa alta com uma palavra em itálico. Cantos retos em tudo. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #ffffff;
+  --sand: #e8dfd4;
+  --sand-soft: #efe9e2;
+  --sand-deep: #d9ccbc;
+  --ink: #3a3431;
+  --ink-soft: #6f655e;
+  --umber: #8b6b59;
+  --umber-deep: #6f5444;
+  --line: #cbbfb2;
+  --danger: #a5463a;
+  --ok: #5c7a57;
+
+  --f-display: var(--font-display), "Cormorant Garamond", Georgia, serif;
+  --f-body: var(--font-body), Lora, Georgia, serif;
+  --f-label: var(--font-label), Montserrat, "Helvetica Neue", Arial, sans-serif;
+  --f-script: var(--font-script), "Brush Script MT", cursive;
+
+  --track: 0.26em;
+  --gutter: max(16px, env(safe-area-inset-left, 0px));
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-html {
-  height: 100%;
-}
-
-html,
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+}
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 1px solid var(--umber); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
+/* Tipos */
+.eyebrow {
+  font-family: var(--f-label);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: var(--track);
+  text-transform: uppercase;
   margin: 0;
 }
+.eyebrow-strong { font-weight: 600; color: var(--ink); }
+.display {
+  font-family: var(--f-display);
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+  font-size: clamp(32px, 3.6vw, 50px);
+  margin: 0;
+  text-wrap: balance;
+}
+.display em { font-style: italic; font-weight: 400; }
+.rule { display: block; width: 64px; height: 1px; background: var(--ink-soft); opacity: 0.6; }
 
-a {
-  color: inherit;
+/* Botões */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-family: var(--f-label);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: var(--track);
+  text-transform: uppercase;
   text-decoration: none;
+  padding: 11px 26px;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  transition: background-color 0.25s, color 0.25s, border-color 0.25s;
+  white-space: nowrap;
 }
+.btn svg { width: 30px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1; }
+.btn-solid { background: var(--umber); color: #fff; }
+.btn-solid:hover { background: var(--umber-deep); }
+.btn-ghost { border-color: currentColor; }
+.btn-ghost:hover { background: rgba(255, 255, 255, 0.35); }
+.btn-dark { color: var(--ink); }
+.btn-dark:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+.btn-quiet { color: var(--ink-soft); border-color: var(--line); }
+.btn-quiet:hover { border-color: var(--ink); color: var(--ink); }
+.btn-danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+.btn-danger:hover { background: var(--danger); color: #fff; }
+.btn:disabled { opacity: 0.55; cursor: progress; }
+.btn-sm { padding: 8px 16px; font-size: 10px; }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+/* Campos */
+.field { display: grid; gap: 6px; min-width: 0; align-content: start; }
+.field > span {
+  font-family: var(--f-label);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
 }
+.field input, .field select, .field textarea {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  padding: 8px 0;
+  font-size: 15px;
+  border-radius: 0;
+  outline: none;
+}
+.field textarea { resize: vertical; }
+.field input:focus, .field select:focus, .field textarea:focus { border-bottom-color: var(--umber); }
+.field small { color: var(--ink-soft); font-size: 12.5px; }
+.form-error { color: var(--danger); font-size: 14px; margin: 0; }
+.form-ok { color: var(--ok); font-size: 14px; margin: 0; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; }
+.check { display: flex; gap: 10px; align-items: center; font-size: 14px; cursor: pointer; }
+.check input { accent-color: var(--umber); width: 16px; height: 16px; }
