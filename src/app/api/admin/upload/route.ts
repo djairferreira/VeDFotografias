@@ -1,7 +1,7 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { getUser } from "@/lib/auth";
 import { one } from "@/lib/db";
-import { ACCEPTED_TYPES, MAX_PHOTO_BYTES } from "@/lib/photos";
+import { ACCEPTED_TYPES } from "@/lib/photos";
 
 /**
  * Autoriza o navegador do admin a enviar o original direto para o Vercel Blob (privado),
@@ -20,8 +20,8 @@ export async function POST(req: Request) {
         const exists = await one("select 1 from galleries where id = $1", [galleryId]);
         if (!exists || !pathname.startsWith(`galerias/${galleryId}/originais/`)) throw new Error("Galeria inválida.");
         return {
+          // Sem limite de tamanho: o envio em partes (multipart) do Blob aceita arquivos enormes.
           allowedContentTypes: ACCEPTED_TYPES,
-          maximumSizeInBytes: MAX_PHOTO_BYTES,
           addRandomSuffix: false,
         };
       },

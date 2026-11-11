@@ -1,9 +1,10 @@
 import { getUser } from "@/lib/auth";
 import { one } from "@/lib/db";
-import { ACCEPTED_TYPES, MAX_PHOTO_BYTES, originalKeyFor, registerPhoto } from "@/lib/photos";
-import { deleteFiles, putFile, readFileBuffer, blobEnabled } from "@/lib/storage";
+import { ACCEPTED_TYPES, originalKeyFor, registerPhoto } from "@/lib/photos";
+import { blobEnabled, deleteFiles, openFile, putFile } from "@/lib/storage";
 
-export const maxDuration = 60;
+// Fotos muito grandes levam mais tempo para gerar as versões menores.
+export const maxDuration = 300;
 
 /**
  * Registra uma foto na galeria e gera as versões menores.
@@ -18,7 +19,8 @@ export async function POST(req: Request, ctx: RouteContext<"/api/admin/galleries
     return Response.json({ error: "Galeria não encontrada" }, { status: 404 });
 
   let key: string;
-  let original: Buffer | null;
+  let source: Buffer | ReadableStream<Uint8Array>;
+  let size = 0;
   let filename: string;
   let contentType: string;
   let categoryId: string | null = null;
@@ -30,28 +32,31 @@ export async function POST(req: Request, ctx: RouteContext<"/api/admin/galleries
     key = body.key;
     filename = (body.filename || "foto.jpg").slice(0, 200);
     contentType = body.contentType || "image/jpeg";
-    original = await readFileBuffer(key);
-    if (!original) return Response.json({ error: "Arquivo não encontrado no armazenamento" }, { status: 404 });
+    const file = await openFile(key);
+    if (!file) return Response.json({ error: "Arquivo não encontrado no armazenamento" }, { status: 404 });
+    source = file.stream;
+    size = file.size ?? 0;
   } else {
     if (blobEnabled()) return Response.json({ error: "Envie pelo Blob" }, { status: 400 });
     const form = await req.formData();
     const file = form.get("file");
     categoryId = (form.get("categoryId") as string | null) || null;
     if (!(file instanceof File)) return Response.json({ error: "Arquivo ausente" }, { status: 400 });
-    if (file.size > MAX_PHOTO_BYTES) return Response.json({ error: "Arquivo acima de 80 MB" }, { status: 413 });
     filename = file.name.slice(0, 200);
     contentType = file.type || "image/jpeg";
     if (!ACCEPTED_TYPES.includes(contentType)) return Response.json({ error: "Formato não aceito" }, { status: 415 });
-    original = Buffer.from(await file.arrayBuffer());
+    const buf = Buffer.from(await file.arrayBuffer());
     key = originalKeyFor(id, filename);
-    await putFile(key, original, contentType);
+    await putFile(key, buf, contentType);
+    source = buf;
+    size = buf.length;
   }
 
   // A categoria precisa ser desta galeria.
   if (categoryId && !(/^[0-9a-f-]{36}$/i.test(categoryId) && (await one("select 1 from categories where id = $1 and gallery_id = $2", [categoryId, id]))))
     categoryId = null;
   try {
-    const photoId = await registerPhoto({ galleryId: id, originalKey: key, original, filename, contentType, categoryId });
+    const photoId = await registerPhoto({ galleryId: id, originalKey: key, source, size, filename, contentType, categoryId });
     return Response.json({ id: photoId });
   } catch {
     await deleteFiles([key]);

@@ -1,6 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import sharp from "sharp";
+import { Readable } from "node:stream";
+import sharp, { type OutputInfo, type Sharp } from "sharp";
 import { one, query } from "./db";
 import { putFile } from "./storage";
 import type { SessionUser } from "./auth";
@@ -51,7 +52,6 @@ export const GALLERY_COLUMNS = `id, client_id, title, description, event_date, p
   kind, slug, link_enabled, design, select_limit, selection_submitted_at, selection_name, selection_note`;
 
 export const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "image/tiff"];
-export const MAX_PHOTO_BYTES = 80 * 1024 * 1024;
 
 export function safeName(name: string) {
   const base = name.normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -62,36 +62,49 @@ export function originalKeyFor(galleryId: string, filename: string) {
   return `galerias/${galleryId}/originais/${randomUUID()}-${safeName(filename)}`;
 }
 
-/** Gera versão de tela e miniatura do original e registra a foto na galeria. */
+/**
+ * Gera versão de tela e miniatura do original e registra a foto na galeria.
+ * Sem limite de tamanho: o original chega em fluxo (stream) e o sharp lê aos poucos,
+ * sem carregar o arquivo inteiro na memória; qualquer resolução é aceita.
+ */
 export async function registerPhoto(opts: {
   galleryId: string;
   originalKey: string;
-  original: Buffer;
+  source: Buffer | ReadableStream<Uint8Array>;
+  size: number;
   filename: string;
   contentType: string;
   categoryId?: string | null;
 }) {
-  const img = sharp(opts.original, { failOn: "none" }).rotate();
-  const meta = await img.metadata();
-  const [preview, thumb] = await Promise.all([
-    img.clone().resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 82, mozjpeg: true }).toBuffer(),
-    img.clone().resize({ width: 720, height: 720, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 76, mozjpeg: true }).toBuffer(),
-  ]);
+  const input = { failOn: "none" as const, limitInputPixels: false as const, sequentialRead: true };
+  const toPreview = (img: Sharp) =>
+    img.rotate().resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 82, mozjpeg: true });
+  let previewOut: { data: Buffer; info: OutputInfo };
+  if (Buffer.isBuffer(opts.source)) {
+    previewOut = await toPreview(sharp(opts.source, input)).toBuffer({ resolveWithObject: true });
+  } else {
+    const pipeline = toPreview(sharp(input));
+    const src = Readable.fromWeb(opts.source as import("node:stream/web").ReadableStream);
+    src.on("error", (e) => pipeline.destroy(e));
+    src.pipe(pipeline);
+    previewOut = await pipeline.toBuffer({ resolveWithObject: true });
+  }
+  const preview = previewOut.data;
+  const thumb = await sharp(preview).resize({ width: 720, height: 720, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 76, mozjpeg: true }).toBuffer();
   const id = randomUUID();
   const previewKey = variantKey({ id, gallery_id: opts.galleryId }, "tela");
   const thumbKey = variantKey({ id, gallery_id: opts.galleryId }, "mini");
   await Promise.all([putFile(previewKey, preview, "image/jpeg"), putFile(thumbKey, thumb, "image/jpeg")]);
 
-  // Orientação EXIF 5–8 troca largura e altura.
-  const swap = (meta.orientation ?? 1) >= 5;
-  const width = swap ? meta.height : meta.width;
-  const height = swap ? meta.width : meta.height;
+  // Proporção vinda da versão de tela, já girada: é o que as páginas usam para o mosaico.
+  const width = previewOut.info.width;
+  const height = previewOut.info.height;
 
   await query(
     `insert into photos (id, gallery_id, filename, original_key, content_type, size_bytes, width, height, position, category_id)
      values ($1,$2,$3,$4,$5,$6,$7,$8,
              coalesce((select max(position) + 1 from photos where gallery_id = $2), 0), $9)`,
-    [id, opts.galleryId, opts.filename, opts.originalKey, opts.contentType, opts.original.length, width ?? null, height ?? null, opts.categoryId ?? null],
+    [id, opts.galleryId, opts.filename, opts.originalKey, opts.contentType, opts.size, width ?? null, height ?? null, opts.categoryId ?? null],
   );
   await query("update galleries set cover_photo_id = coalesce(cover_photo_id, $2) where id = $1", [opts.galleryId, id]);
   return id;

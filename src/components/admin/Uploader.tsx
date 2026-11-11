@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 
 const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,image/tiff";
-const MAX = 80 * 1024 * 1024;
 
 function safe(name: string) {
   return (
@@ -24,7 +23,6 @@ export function Uploader({ galleryId, blob, categoryId = null }: { galleryId: st
   const busy = total > 0 && done < total;
 
   async function sendOne(file: File) {
-    if (file.size > MAX) throw new Error(`${file.name}: acima de 80 MB`);
     let res: Response;
     if (blob) {
       const key = `galerias/${galleryId}/originais/${crypto.randomUUID()}-${safe(file.name)}`;
@@ -97,7 +95,7 @@ export function Uploader({ galleryId, blob, categoryId = null }: { galleryId: st
         }}
       >
         <strong>Arraste as fotos aqui</strong>
-        <p>ou clique para escolher · JPG, PNG, WEBP, HEIC ou TIFF até 80 MB cada · o original fica guardado para download</p>
+        <p>ou clique para escolher · JPG, PNG, WEBP, HEIC ou TIFF, de qualquer tamanho · o original fica guardado sem perda para download</p>
         <input
           ref={input}
           id="upload-input"
