@@ -376,3 +376,35 @@ button.cat { padding: 10px 14px; }
   .designer-phone { display: none; }
   .dc-photos { grid-template-columns: repeat(4, 1fr); }
 }
+
+/* ===== Barra de envio das fotos ===== */
+.drop.is-busy { cursor: progress; border-style: solid; }
+.progress { gap: 10px; }
+.progress-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.progress-head strong { font-family: var(--f-display); font-weight: 400; font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+.progress-head span { font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.progress .bar { height: 8px; background: var(--sand); overflow: hidden; }
+.progress .bar i { position: relative; transition: width 0.35s ease; overflow: hidden; }
+.progress .bar i.is-moving::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: bar-shine 1.3s linear infinite;
+}
+.progress .bar i.is-done { background: var(--ok); }
+.progress .bar i.is-warn { background: var(--danger); }
+@keyframes bar-shine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.up-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; max-height: 280px; overflow-y: auto; border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+.up-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 14px; padding: 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 40%, transparent); font-size: 13px; }
+.up-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.up-state { color: var(--ink-soft); font-variant-numeric: tabular-nums; text-align: right; }
+.up-bar { grid-column: 1 / -1; height: 3px; background: var(--sand); overflow: hidden; }
+.up-bar i { display: block; height: 100%; background: var(--umber); transition: width 0.3s ease; }
+.up-item.is-processando .up-bar i { background: repeating-linear-gradient(-45deg, var(--umber) 0 8px, var(--umber-deep) 8px 16px); background-size: 200% 100%; animation: stripes 1s linear infinite; }
+.up-item.is-pronta .up-bar i { background: var(--ok); }
+.up-item.is-pronta .up-state { color: var(--ok); }
+.up-item.is-erro .up-bar i { background: var(--danger); }
+.up-item.is-erro .up-state { color: var(--danger); }
+.up-item.is-fila { opacity: 0.6; }
+@keyframes stripes { from { background-position: 0 0; } to { background-position: 22.6px 0; } }
