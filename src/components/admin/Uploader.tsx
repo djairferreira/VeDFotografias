@@ -14,7 +14,7 @@ function safe(name: string) {
   );
 }
 
-export function Uploader({ galleryId, blob }: { galleryId: string; blob: boolean }) {
+export function Uploader({ galleryId, blob, categoryId = null }: { galleryId: string; blob: boolean; categoryId?: string | null }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
@@ -38,11 +38,12 @@ export function Uploader({ galleryId, blob }: { galleryId: string; blob: boolean
       res = await fetch(`/api/admin/galleries/${galleryId}/photos`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key, filename: file.name, contentType: file.type || "image/jpeg" }),
+        body: JSON.stringify({ key, filename: file.name, contentType: file.type || "image/jpeg", categoryId }),
       });
     } else {
       const fd = new FormData();
       fd.append("file", file);
+      if (categoryId) fd.append("categoryId", categoryId);
       res = await fetch(`/api/admin/galleries/${galleryId}/photos`, { method: "POST", body: fd });
     }
     if (!res.ok) {

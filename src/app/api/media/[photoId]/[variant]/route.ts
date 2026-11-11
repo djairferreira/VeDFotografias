@@ -1,6 +1,6 @@
 import { getUser } from "@/lib/auth";
 import { query } from "@/lib/db";
-import { photoForUser, safeName } from "@/lib/photos";
+import { photoForUser, safeName, variantKey } from "@/lib/photos";
 import { openFile } from "@/lib/storage";
 
 /**
@@ -15,7 +15,7 @@ export async function GET(req: Request, ctx: RouteContext<"/api/media/[photoId]/
   if (!found) return new Response("Não encontrada", { status: 404 });
   const { photo } = found;
 
-  const key = variant === "mini" ? photo.thumb_key : variant === "tela" ? photo.preview_key : variant === "original" ? photo.original_key : null;
+  const key = variant === "mini" || variant === "tela" ? variantKey(photo, variant) : variant === "original" ? photo.original_key : null;
   if (!key) return new Response("Variante inválida", { status: 400 });
 
   const file = await openFile(key);

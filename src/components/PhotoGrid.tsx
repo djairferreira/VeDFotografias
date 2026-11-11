@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { deletePhotos, setCover } from "@/app/actions/admin";
 
-export type GridPhoto = { id: string; filename: string };
+export type GridPhoto = { id: string; filename: string; selected?: boolean };
 
 const Check = () => (
   <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" /></svg>
@@ -20,11 +20,15 @@ export function PhotoGrid({
   galleryId,
   mode,
   coverId,
+  categories = [],
+  onMove,
 }: {
   photos: GridPhoto[];
   galleryId: string;
   mode: "admin" | "client";
   coverId?: string | null;
+  categories?: { id: string; name: string }[];
+  onMove?: (ids: string[], categoryId: string | null) => Promise<void>;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState<number | null>(null);
@@ -91,6 +95,30 @@ export function PhotoGrid({
           {selected.size > 0 ? (
             <>
               <button type="button" className="btn btn-quiet btn-sm" onClick={() => setSelected(new Set())}>Limpar</button>
+              {admin && onMove && categories.length > 0 && (
+                <select
+                  id="move-to"
+                  className="move-select"
+                  value=""
+                  disabled={pending}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    startTransition(async () => {
+                      await onMove(ids, v === "_none" ? null : v);
+                      setSelected(new Set());
+                    });
+                  }}
+                  aria-label="Mover para categoria"
+                >
+                  <option value="" disabled>
+                    {pending ? "Movendo…" : "Mover para…"}
+                  </option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                  <option value="_none">Sem categoria</option>
+                </select>
+              )}
               <a className="btn btn-solid btn-sm" href={zipHref(ids)}>
                 Baixar {selected.size} {selected.size === 1 ? "foto" : "fotos"}
               </a>
@@ -147,6 +175,7 @@ export function PhotoGrid({
               <Down />
             </a>
             {admin && coverId === p.id && <span className="tile-badge">Capa</span>}
+            {admin && p.selected && <span className="tile-badge tile-chosen">♥ Escolhida</span>}
           </div>
         ))}
       </div>

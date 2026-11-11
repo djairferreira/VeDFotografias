@@ -14,7 +14,10 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const user = await requireAdmin();
   const [c, unread] = await Promise.all([
     getSiteContent(),
-    one<{ n: string }>("select count(*) n from inquiries where not read"),
+    one<{ n: string; s: string }>(
+      `select (select count(*) from inquiries where not read) n,
+              (select count(*) from galleries where selection_submitted_at is not null and not selection_seen) s`,
+    ),
   ]);
   return (
     <div className="panel">
@@ -23,7 +26,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           <Logo name={c.brand} height={76} />
           <small>Painel</small>
         </Link>
-        <SideNav unread={Number(unread?.n ?? 0)} />
+        <SideNav unread={Number(unread?.n ?? 0)} selections={Number(unread?.s ?? 0)} />
         <div className="side-foot">
           <span>
             <strong>{user.name}</strong>

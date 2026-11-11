@@ -1,5 +1,6 @@
 import "server-only";
 import { Pool, types, type QueryResultRow } from "pg";
+import { attachDatabasePool } from "@vercel/functions";
 
 // Datas (tipo DATE) chegam como texto "AAAA-MM-DD", sem fuso.
 types.setTypeParser(1082, (v) => v);
@@ -15,6 +16,8 @@ function getPool() {
       max: 5,
       idleTimeoutMillis: 10_000,
     });
+    // Fecha conexões ociosas antes da instância ser suspensa (Fluid compute).
+    attachDatabasePool(globalForDb.__pool);
   }
   return globalForDb.__pool;
 }

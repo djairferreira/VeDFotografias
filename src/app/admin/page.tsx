@@ -4,7 +4,7 @@ import { formatBytes, formatDate } from "@/lib/photos";
 import { getUsage, usd } from "@/lib/usage";
 
 export default async function AdminHome() {
-  const [stats, recentDownloads, messages, usage] = await Promise.all([
+  const [stats, recentDownloads, messages, usage, selections] = await Promise.all([
     one<{ clients: string; galleries: string; photos: string; bytes: string; downloads: string }>(
       `select (select count(*) from users where role = 'client') clients,
               (select count(*) from galleries) galleries,
@@ -21,6 +21,12 @@ export default async function AdminHome() {
       "select id, name, service, created_at, read from inquiries order by created_at desc limit 6",
     ),
     getUsage(1),
+    query<{ id: string; title: string; selection_name: string | null; selection_submitted_at: string; selection_seen: boolean; n: string }>(
+      `select g.id, g.title, g.selection_name, g.selection_submitted_at, g.selection_seen,
+              (select count(*) from photos p where p.gallery_id = g.id and p.selected) n
+         from galleries g where g.kind = 'album' and g.selection_submitted_at is not null
+        order by g.selection_seen, g.selection_submitted_at desc limit 6`,
+    ),
   ]);
 
   return (
@@ -48,6 +54,28 @@ export default async function AdminHome() {
         <div className="stat"><b>{stats?.photos}</b><span>Fotos</span></div>
         <div className="stat"><b>{stats?.downloads}</b><span>Downloads em 30 dias</span></div>
       </section>
+
+      {selections.length > 0 && (
+        <section className="block">
+          <div className="block-head"><h2>Seleções de álbum recebidas</h2></div>
+          <div className="table-wrap">
+            <table className="table">
+              <tbody>
+                {selections.map((s) => (
+                  <tr key={s.id} className={s.selection_seen ? "" : "unread"}>
+                    <td>
+                      <Link href={`/admin/galerias/${s.id}?aba=selecao`}>{s.title}</Link>
+                      <span className="sub">{s.selection_name ?? "Cliente"} escolheu {s.n} fotos</span>
+                    </td>
+                    <td>{!s.selection_seen && <span className="pill pill-on">Nova</span>}</td>
+                    <td className="num">{formatDate(s.selection_submitted_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <div className="two-col">
         <section className="block">

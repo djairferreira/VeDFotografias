@@ -10,8 +10,10 @@ export default async function GalleriesPage() {
   const galleries = await query<{
     id: string; title: string; event_date: string | null; published: boolean; expires_at: string | null;
     cover_photo_id: string | null; client: string | null; photos: string; expired: boolean;
+    kind: string; link_enabled: boolean; new_selection: boolean;
   }>(
     `select g.id, g.title, g.event_date, g.published, g.expires_at, g.cover_photo_id, u.name client,
+            g.kind, g.link_enabled, (g.selection_submitted_at is not null and not g.selection_seen) new_selection,
             (select count(*) from photos p where p.gallery_id = g.id) photos,
             (g.expires_at is not null and g.expires_at < current_date) expired
        from galleries g left join users u on u.id = g.client_id
@@ -33,7 +35,9 @@ export default async function GalleriesPage() {
             <Link key={g.id} href={`/admin/galerias/${g.id}`} className="card">
               <div className="card-img">
                 {g.cover_photo_id && <img src={`/api/media/${g.cover_photo_id}/mini`} alt="" loading="lazy" />}
-                {!g.client ? (
+                {g.new_selection ? (
+                  <span className="pill pill-on">Seleção recebida</span>
+                ) : !g.client && !g.link_enabled ? (
                   <span className="pill pill-warn">Sem cliente</span>
                 ) : !g.published ? (
                   <span className="pill pill-off">Oculta</span>
@@ -41,7 +45,7 @@ export default async function GalleriesPage() {
                   <span className="pill pill-warn">Expirada</span>
                 ) : null}
               </div>
-              <span className="card-meta">{g.client ?? "Sem cliente"} · {g.photos} fotos</span>
+              <span className="card-meta">{g.kind === "album" ? "Álbum" : "Galeria"} · {g.client ?? (g.link_enabled ? "Por link" : "Sem cliente")} · {g.photos} fotos</span>
               <h3>{g.title}</h3>
               {g.event_date && <p>{formatDate(g.event_date)}</p>}
             </Link>

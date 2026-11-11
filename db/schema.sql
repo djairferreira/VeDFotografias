@@ -53,8 +53,6 @@ create table if not exists photos (
   gallery_id uuid not null references galleries(id) on delete cascade,
   filename text not null,
   original_key text not null,
-  preview_key text not null,
-  thumb_key text not null,
   content_type text not null default 'image/jpeg',
   size_bytes bigint not null default 0,
   width int,
@@ -92,3 +90,39 @@ create table if not exists site_content (
   value jsonb not null,
   updated_at timestamptz not null default now()
 );
+
+-- ===== Galerias por link e álbuns de seleção (2026-11-11) =====
+-- Versões menores têm caminho calculado pelo id da foto: sem colunas extras.
+alter table photos drop column if exists preview_key;
+alter table photos drop column if exists thumb_key;
+
+-- kind: 'gallery' (entrega por link, estilo Pixieset) ou 'album' (cliente escolhe N fotos).
+alter table galleries add column if not exists kind text not null default 'gallery';
+alter table galleries add column if not exists slug text;
+alter table galleries add column if not exists link_enabled boolean not null default false;
+-- Visual da capa num único JSON: foco da foto, posição, fonte, cor e tamanho do título.
+alter table galleries add column if not exists design jsonb not null default '{}';
+alter table galleries add column if not exists select_limit int;
+alter table galleries add column if not exists selection_submitted_at timestamptz;
+alter table galleries add column if not exists selection_name text;
+alter table galleries add column if not exists selection_note text;
+alter table galleries add column if not exists selection_seen boolean not null default false;
+-- Downloads por link público: um contador, não uma linha por download.
+alter table galleries add column if not exists public_downloads int not null default 0;
+do $$ begin
+  alter table galleries add constraint galleries_kind_chk check (kind in ('gallery', 'album'));
+exception when duplicate_object then null; end $$;
+create unique index if not exists galleries_slug_key on galleries (slug);
+
+create table if not exists categories (
+  id uuid primary key default gen_random_uuid(),
+  gallery_id uuid not null references galleries(id) on delete cascade,
+  name text not null,
+  position smallint not null default 0
+);
+create index if not exists categories_gallery_idx on categories (gallery_id, position);
+
+alter table photos add column if not exists category_id uuid references categories(id) on delete set null;
+-- Escolha do álbum: 1 byte por foto em vez de uma tabela de seleção.
+alter table photos add column if not exists selected boolean not null default false;
+create index if not exists photos_selected_idx on photos (gallery_id) where selected;

@@ -13,7 +13,7 @@ const LINKS = [
   { href: "/admin/conta", label: "Minha conta" },
 ] as const;
 
-export function SideNav({ unread }: { unread: number }) {
+export function SideNav({ unread, selections = 0 }: { unread: number; selections?: number }) {
   const path = usePathname();
   return (
     <nav className="side-nav" aria-label="Painel">
@@ -23,6 +23,7 @@ export function SideNav({ unread }: { unread: number }) {
           <Link key={l.href} href={l.href} aria-current={active ? "page" : undefined}>
             {l.label}
             {l.href === "/admin/mensagens" && unread > 0 && <span className="side-count">{unread}</span>}
+            {l.href === "/admin/galerias" && selections > 0 && <span className="side-count">{selections}</span>}
           </Link>
         );
       })}

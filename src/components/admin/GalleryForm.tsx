@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createGallery, updateGallery, type ActionState } from "@/app/actions/admin";
 
 type Gallery = {
@@ -19,9 +19,31 @@ export function GalleryForm({
   defaultClient?: string;
 }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(gallery ? updateGallery : createGallery, {});
+  const [kind, setKind] = useState<"gallery" | "album">("gallery");
   return (
     <form action={action} className="form">
       {gallery && <input type="hidden" name="id" value={gallery.id} />}
+      {!gallery && (
+        <div className="field-wide kind-cards">
+          <label className={`kind-card${kind === "gallery" ? " is-on" : ""}`}>
+            <input type="radio" name="kind" value="gallery" checked={kind === "gallery"} onChange={() => setKind("gallery")} />
+            <strong>Galeria para entregar</strong>
+            <span>Fotos prontas, por categoria, com download em alta. Link para noivos e convidados.</span>
+          </label>
+          <label className={`kind-card${kind === "album" ? " is-on" : ""}`}>
+            <input type="radio" name="kind" value="album" checked={kind === "album"} onChange={() => setKind("album")} />
+            <strong>Álbum para seleção</strong>
+            <span>O cliente escolhe as fotos do álbum entre todas, com marca d&apos;água, e envia para vocês.</span>
+          </label>
+        </div>
+      )}
+      {!gallery && kind === "album" && (
+        <label className="field field-wide" style={{ maxWidth: 420 }}>
+          <span>Quantas fotos o cliente pode escolher</span>
+          <input id="g-limit" name="select_limit" type="number" min={1} defaultValue={60} required />
+          <small>Ex.: 60 fotos contratadas para o álbum.</small>
+        </label>
+      )}
       <label className="field">
         <span>Cliente</span>
         <select id="g-client" name="client_id" defaultValue={gallery?.client_id ?? defaultClient ?? ""}>

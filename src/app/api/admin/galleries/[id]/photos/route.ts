@@ -21,9 +21,11 @@ export async function POST(req: Request, ctx: RouteContext<"/api/admin/galleries
   let original: Buffer | null;
   let filename: string;
   let contentType: string;
+  let categoryId: string | null = null;
 
   if (req.headers.get("content-type")?.includes("application/json")) {
-    const body = (await req.json()) as { key?: string; filename?: string; contentType?: string };
+    const body = (await req.json()) as { key?: string; filename?: string; contentType?: string; categoryId?: string | null };
+    categoryId = body.categoryId ?? null;
     if (!body.key?.startsWith(`galerias/${id}/originais/`)) return Response.json({ error: "Chave inválida" }, { status: 400 });
     key = body.key;
     filename = (body.filename || "foto.jpg").slice(0, 200);
@@ -34,6 +36,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/admin/galleries
     if (blobEnabled()) return Response.json({ error: "Envie pelo Blob" }, { status: 400 });
     const form = await req.formData();
     const file = form.get("file");
+    categoryId = (form.get("categoryId") as string | null) || null;
     if (!(file instanceof File)) return Response.json({ error: "Arquivo ausente" }, { status: 400 });
     if (file.size > MAX_PHOTO_BYTES) return Response.json({ error: "Arquivo acima de 80 MB" }, { status: 413 });
     filename = file.name.slice(0, 200);
@@ -44,8 +47,11 @@ export async function POST(req: Request, ctx: RouteContext<"/api/admin/galleries
     await putFile(key, original, contentType);
   }
 
+  // A categoria precisa ser desta galeria.
+  if (categoryId && !(/^[0-9a-f-]{36}$/i.test(categoryId) && (await one("select 1 from categories where id = $1 and gallery_id = $2", [categoryId, id]))))
+    categoryId = null;
   try {
-    const photoId = await registerPhoto({ galleryId: id, originalKey: key, original, filename, contentType });
+    const photoId = await registerPhoto({ galleryId: id, originalKey: key, original, filename, contentType, categoryId });
     return Response.json({ id: photoId });
   } catch {
     await deleteFiles([key]);

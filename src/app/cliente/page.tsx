@@ -9,15 +9,17 @@ export default async function ClientHome() {
   const user = await requireClient();
   const galleries = await query<{
     id: string; title: string; event_date: string | null; expires_at: string | null; cover_photo_id: string | null; photos: string;
+    kind: string; slug: string | null;
   }>(
-    `select g.id, g.title, g.event_date, g.expires_at, g.cover_photo_id,
+    `select g.id, g.title, g.event_date, g.expires_at, g.cover_photo_id, g.kind, g.slug,
             (select count(*) from photos p where p.gallery_id = g.id) photos
        from galleries g
       where g.client_id = $1 and g.published and (g.expires_at is null or g.expires_at >= current_date)
       order by coalesce(g.event_date, g.created_at::date) desc`,
     [user.id],
   );
-  if (galleries.length === 1) redirect(`/cliente/galerias/${galleries[0].id}`);
+  const hrefOf = (g: (typeof galleries)[number]) => (g.kind === "album" && g.slug ? `/album/${g.slug}` : g.slug ? `/galeria/${g.slug}` : `/cliente/galerias/${g.id}`);
+  if (galleries.length === 1) redirect(hrefOf(galleries[0]));
 
   return (
     <>
@@ -36,11 +38,11 @@ export default async function ClientHome() {
         {galleries.length ? (
           <div className="cards">
             {galleries.map((g) => (
-              <Link key={g.id} href={`/cliente/galerias/${g.id}`} className="card">
+              <Link key={g.id} href={hrefOf(g)} className="card">
                 <div className="card-img">
-                  {g.cover_photo_id && <img src={`/api/media/${g.cover_photo_id}/mini`} alt="" loading="lazy" />}
+                  {g.cover_photo_id && <img src={g.slug ? `/api/p/${g.slug}/${g.cover_photo_id}/mini` : `/api/media/${g.cover_photo_id}/mini`} alt="" loading="lazy" />}
                 </div>
-                <span className="card-meta">{g.photos} fotos{g.expires_at ? ` · disponível até ${formatDate(g.expires_at)}` : ""}</span>
+                <span className="card-meta">{g.kind === "album" ? "Escolha do álbum · " : ""}{g.photos} fotos{g.expires_at ? ` · disponível até ${formatDate(g.expires_at)}` : ""}</span>
                 <h3>{g.title}</h3>
                 {g.event_date && <p>{formatDate(g.event_date)}</p>}
               </Link>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireClient } from "@/lib/auth";
 import { one, query } from "@/lib/db";
 import { formatDate, galleryForUser } from "@/lib/photos";
@@ -18,6 +18,8 @@ export default async function ClientGallery({ params }: PageProps<"/cliente/gale
   const user = await requireClient();
   const gallery = await galleryForUser(id, user);
   if (!gallery) notFound();
+  // A galeria com link abre na página bonita; o álbum, sempre com marca d'água.
+  if (gallery.slug) redirect(`/${gallery.kind === "album" ? "album" : "galeria"}/${gallery.slug}`);
   const [photos, count] = await Promise.all([
     query<{ id: string; filename: string }>("select id, filename from photos where gallery_id = $1 order by position, created_at", [id]),
     one<{ n: string }>(

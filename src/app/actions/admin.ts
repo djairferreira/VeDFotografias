@@ -6,6 +6,8 @@ import sharp from "sharp";
 import { generatePassword, hashPassword, requireAdmin } from "@/lib/auth";
 import { one, query } from "@/lib/db";
 import { deleteFiles, putFile } from "@/lib/storage";
+import { isSlug, photoKeys, slugify } from "@/lib/photos";
+import { readDesign } from "@/lib/gallery-design";
 import { DEFAULT_CONTENT, getSiteContent, IMAGE_SLOTS, saveSiteContent, type ImageSlot, type SiteContent } from "@/lib/site-content";
 
 export type ActionState = { error?: string; ok?: string; password?: string; email?: string };
@@ -73,13 +75,13 @@ export async function deleteClient(form: FormData) {
   await requireAdmin();
   const id = str(form, "id");
   if (!isUuid(id)) return;
-  const keys = await query<{ k: string }>(
-    `select unnest(array[p.original_key, p.preview_key, p.thumb_key]) k
+  const keys = await query<{ id: string; gallery_id: string; original_key: string }>(
+    `select p.id, p.gallery_id, p.original_key
        from photos p join galleries g on g.id = p.gallery_id where g.client_id = $1`,
     [id],
   );
   await query("delete from users where id = $1 and role = 'client'", [id]);
-  await deleteFiles(keys.map((r) => r.k));
+  await deleteFiles(keys.flatMap(photoKeys));
   revalidatePath("/admin/clientes");
   redirect("/admin/clientes");
 }
@@ -101,10 +103,23 @@ export async function createGallery(_: ActionState, form: FormData): Promise<Act
   if ("error" in client) return { error: client.error };
   const title = str(form, "title", 160);
   if (!title) return { error: "Dê um nome à galeria." };
+  const kind = str(form, "kind") === "album" ? "album" : "gallery";
+  const limit = Number(str(form, "select_limit"));
+  if (kind === "album" && (!Number.isInteger(limit) || limit < 1)) return { error: "Informe quantas fotos o cliente pode escolher." };
   const row = await one<{ id: string }>(
-    `insert into galleries (client_id, title, description, event_date, expires_at, published)
-     values ($1,$2,$3,$4,$5,$6) returning id`,
-    [client.id, title, str(form, "description") || null, str(form, "event_date") || null, str(form, "expires_at") || null, form.get("published") === "on"],
+    `insert into galleries (client_id, title, description, event_date, expires_at, published, kind, slug, link_enabled, select_limit)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,true,$9) returning id`,
+    [
+      client.id,
+      title,
+      str(form, "description") || null,
+      str(form, "event_date") || null,
+      str(form, "expires_at") || null,
+      form.get("published") === "on",
+      kind,
+      await freeSlug(title),
+      kind === "album" ? limit : null,
+    ],
   );
   redirect(`/admin/galerias/${row!.id}`);
 }
@@ -152,12 +167,12 @@ export async function deleteGallery(form: FormData) {
   await requireAdmin();
   const id = str(form, "id");
   if (!isUuid(id)) return;
-  const keys = await query<{ k: string }>(
-    "select unnest(array[original_key, preview_key, thumb_key]) k from photos where gallery_id = $1",
+  const keys = await query<{ id: string; gallery_id: string; original_key: string }>(
+    "select id, gallery_id, original_key from photos where gallery_id = $1",
     [id],
   );
   await query("delete from galleries where id = $1", [id]);
-  await deleteFiles(keys.map((r) => r.k));
+  await deleteFiles(keys.flatMap(photoKeys));
   revalidatePath("/admin/galerias");
   redirect("/admin/galerias");
 }
@@ -166,9 +181,8 @@ export async function deletePhotos(galleryId: string, ids: string[]) {
   await requireAdmin();
   const valid = ids.filter(isUuid);
   if (!isUuid(galleryId) || !valid.length) return;
-  const rows = await query<{ k: string }>(
-    `select unnest(array[original_key, preview_key, thumb_key]) k
-       from photos where gallery_id = $1 and id = any($2::uuid[])`,
+  const rows = await query<{ id: string; gallery_id: string; original_key: string }>(
+    `select id, gallery_id, original_key from photos where gallery_id = $1 and id = any($2::uuid[])`,
     [galleryId, valid],
   );
   await query("delete from photos where gallery_id = $1 and id = any($2::uuid[])", [galleryId, valid]);
@@ -177,7 +191,7 @@ export async function deletePhotos(galleryId: string, ids: string[]) {
       where id = $1 and (cover_photo_id is null or cover_photo_id = any($2::uuid[]))`,
     [galleryId, valid],
   );
-  await deleteFiles(rows.map((r) => r.k));
+  await deleteFiles(rows.flatMap(photoKeys));
   revalidatePath(`/admin/galerias/${galleryId}`);
 }
 
@@ -257,4 +271,133 @@ export async function saveSite(_: ActionState, form: FormData): Promise<ActionSt
   await deleteFiles(oldKeys);
   revalidatePath("/", "layout");
   return { ok: "Site atualizado." };
+}
+
+/* ---------- Link, visual e categorias da galeria ---------- */
+
+/** Endereço livre a partir de um texto (acrescenta -2, -3… se já existir). */
+async function freeSlug(text: string, exceptId?: string) {
+  const base = slugify(text) || "galeria";
+  for (let n = 1; n < 200; n++) {
+    const s = n === 1 ? base : `${base.slice(0, 55)}-${n}`;
+    if (!(await one("select 1 from galleries where slug = $1 and id is distinct from $2", [s, exceptId ?? null]))) return s;
+  }
+  return `${base.slice(0, 50)}-${Date.now().toString(36)}`;
+}
+
+export async function saveDesign(galleryId: string, title: string, raw: unknown): Promise<ActionState> {
+  await requireAdmin();
+  if (!isUuid(galleryId)) return { error: "Galeria inválida." };
+  const t = String(title ?? "").trim().slice(0, 160);
+  if (!t) return { error: "Dê um título à galeria." };
+  await query("update galleries set title = $2, design = $3 where id = $1", [galleryId, t, JSON.stringify(readDesign(raw))]);
+  revalidatePath("/admin", "layout");
+  return { ok: "Capa salva." };
+}
+
+export async function saveLink(_: ActionState, form: FormData): Promise<ActionState> {
+  await requireAdmin();
+  const id = str(form, "id");
+  if (!isUuid(id)) return { error: "Galeria inválida." };
+  const slug = slugify(str(form, "slug", 80));
+  if (!isSlug(slug)) return { error: "O endereço precisa ter de 3 a 60 letras, números ou hífens." };
+  if (await one("select 1 from galleries where slug = $1 and id <> $2", [slug, id]))
+    return { error: `O endereço "${slug}" já está em uso. Escolha outro.` };
+  const kind = str(form, "kind") === "album" ? "album" : "gallery";
+  const limit = Number(str(form, "select_limit"));
+  if (kind === "album" && (!Number.isInteger(limit) || limit < 1 || limit > 5000))
+    return { error: "Informe quantas fotos o cliente pode escolher." };
+  await query("update galleries set slug = $2, kind = $3, link_enabled = $4, select_limit = $5 where id = $1", [
+    id,
+    slug,
+    kind,
+    form.get("link_enabled") === "on",
+    kind === "album" ? limit : null,
+  ]);
+  revalidatePath("/admin", "layout");
+  return { ok: "Link salvo." };
+}
+
+export async function suggestSlug(text: string, galleryId: string) {
+  await requireAdmin();
+  return freeSlug(text, isUuid(galleryId) ? galleryId : undefined);
+}
+
+export async function addCategory(galleryId: string, name: string) {
+  await requireAdmin();
+  const n = String(name ?? "").trim().slice(0, 60);
+  if (!isUuid(galleryId) || !n) return;
+  await query(
+    `insert into categories (gallery_id, name, position)
+     values ($1, $2, coalesce((select max(position) + 1 from categories where gallery_id = $1), 0))`,
+    [galleryId, n],
+  );
+  revalidatePath(`/admin/galerias/${galleryId}`);
+}
+
+export async function renameCategory(id: string, name: string) {
+  await requireAdmin();
+  const n = String(name ?? "").trim().slice(0, 60);
+  if (!isUuid(id) || !n) return;
+  const row = await one<{ gallery_id: string }>("update categories set name = $2 where id = $1 returning gallery_id", [id, n]);
+  if (row) revalidatePath(`/admin/galerias/${row.gallery_id}`);
+}
+
+export async function deleteCategory(id: string) {
+  await requireAdmin();
+  if (!isUuid(id)) return;
+  // As fotos continuam na galeria, só ficam sem categoria.
+  const row = await one<{ gallery_id: string }>("delete from categories where id = $1 returning gallery_id", [id]);
+  if (row) revalidatePath(`/admin/galerias/${row.gallery_id}`);
+}
+
+export async function moveCategory(id: string, dir: -1 | 1) {
+  await requireAdmin();
+  if (!isUuid(id)) return;
+  const cat = await one<{ gallery_id: string }>("select gallery_id from categories where id = $1", [id]);
+  if (!cat) return;
+  const list = await query<{ id: string }>("select id from categories where gallery_id = $1 order by position, name", [cat.gallery_id]);
+  const i = list.findIndex((c) => c.id === id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  await query(
+    "update categories c set position = v.pos from unnest($1::uuid[]) with ordinality as v(id, pos) where c.id = v.id",
+    [list.map((c) => c.id)],
+  );
+  revalidatePath(`/admin/galerias/${cat.gallery_id}`);
+}
+
+export async function setPhotosCategory(galleryId: string, ids: string[], categoryId: string | null) {
+  await requireAdmin();
+  const valid = ids.filter(isUuid);
+  if (!isUuid(galleryId) || !valid.length) return;
+  if (categoryId && !(await one("select 1 from categories where id = $1 and gallery_id = $2", [categoryId, galleryId]))) return;
+  await query("update photos set category_id = $3 where gallery_id = $1 and id = any($2::uuid[])", [galleryId, valid, categoryId]);
+  revalidatePath(`/admin/galerias/${galleryId}`);
+}
+
+/* ---------- Seleção do álbum ---------- */
+
+export async function markSelectionSeen(galleryId: string) {
+  await requireAdmin();
+  if (!isUuid(galleryId)) return;
+  await query("update galleries set selection_seen = true where id = $1 and selection_submitted_at is not null", [galleryId]);
+}
+
+export async function reopenSelection(form: FormData) {
+  await requireAdmin();
+  const id = str(form, "id");
+  if (!isUuid(id)) return;
+  await query("update galleries set selection_submitted_at = null, selection_seen = false where id = $1", [id]);
+  revalidatePath("/admin", "layout");
+}
+
+export async function clearSelection(form: FormData) {
+  await requireAdmin();
+  const id = str(form, "id");
+  if (!isUuid(id)) return;
+  await query("update photos set selected = false where gallery_id = $1 and selected", [id]);
+  await query("update galleries set selection_submitted_at = null, selection_name = null, selection_note = null where id = $1", [id]);
+  revalidatePath("/admin", "layout");
 }
