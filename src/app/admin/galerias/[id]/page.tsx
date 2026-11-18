@@ -6,7 +6,6 @@ import { one, query } from "@/lib/db";
 import { formatBytes, formatDate, GALLERY_COLUMNS, type Gallery } from "@/lib/photos";
 import { readDesign } from "@/lib/gallery-design";
 import { getSiteContent } from "@/lib/site-content";
-import { blobEnabled } from "@/lib/storage";
 import { deleteGallery } from "@/app/actions/admin";
 import { GalleryForm } from "@/components/admin/GalleryForm";
 import { PhotoManager } from "@/components/admin/PhotoManager";
@@ -30,16 +29,16 @@ export default async function GalleryAdminPage({ params, searchParams }: PagePro
   const { id } = await params;
   const aba = String((await searchParams).aba ?? "fotos");
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const gallery = await one<Gallery & { client_name: string | null; public_downloads: number; selection_seen: boolean }>(
-    `select ${GALLERY_COLUMNS.replace(/(^|,\s*)(\w+)/g, "$1g.$2")}, g.public_downloads, g.selection_seen, u.name client_name
+  const gallery = await one<Gallery & { client_name: string | null; public_downloads: number; selection_seen: boolean; photo_order: string }>(
+    `select ${GALLERY_COLUMNS.replace(/(^|,\s*)(\w+)/g, "$1g.$2")}, g.public_downloads, g.selection_seen, g.photo_order, u.name client_name
        from galleries g left join users u on u.id = g.client_id where g.id = $1`,
     [id],
   );
   if (!gallery) notFound();
   const album = gallery.kind === "album";
   const [photos, categories, clients, totals, site, h] = await Promise.all([
-    query<{ id: string; filename: string; c: string | null; s: boolean }>(
-      "select id, filename, category_id c, selected s from photos where gallery_id = $1 order by position, created_at",
+    query<{ id: string; filename: string; c: string | null; s: boolean; size: string }>(
+      "select id, filename, category_id c, selected s, size_bytes size from photos where gallery_id = $1 order by position, created_at",
       [id],
     ),
     query<{ id: string; name: string }>("select id, name from categories where gallery_id = $1 order by position, name", [id]),
@@ -96,7 +95,8 @@ export default async function GalleryAdminPage({ params, searchParams }: PagePro
       {tab === "fotos" && (
         <PhotoManager
           galleryId={gallery.id}
-          blob={blobEnabled()}
+          galleryTitle={gallery.title}
+          order={gallery.photo_order}
           coverId={gallery.cover_photo_id}
           categories={categories}
           photos={photos}

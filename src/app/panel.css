@@ -408,3 +408,37 @@ button.cat { padding: 10px 14px; }
 .up-item.is-erro .up-state { color: var(--danger); }
 .up-item.is-fila { opacity: 0.6; }
 @keyframes stripes { from { background-position: 0 0; } to { background-position: 22.6px 0; } }
+
+/* ===== Repetidas, ordem, seleção e painel flutuante de envio ===== */
+.toolbar-tip { text-transform: none; letter-spacing: 0; font-family: var(--f-body); font-size: 12.5px; opacity: 0.8; }
+@media (hover: none) { .toolbar-tip { display: none; } }
+.grid { user-select: none; -webkit-user-select: none; }
+.order-field { max-width: 320px; }
+.dup { border: 1px solid var(--umber); background: var(--sand-soft); padding: 20px 22px; display: grid; gap: 10px; animation: dock-in 0.3s ease; }
+.dup-title { margin: 0; font-family: var(--f-display); font-size: 23px; }
+.dup-text { margin: 0; font-size: 14px; color: var(--ink-soft); }
+.dup-list { margin: 0; padding-left: 18px; font-size: 13.5px; columns: 2 220px; }
+
+.dock {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  z-index: 70;
+  width: min(380px, calc(100vw - 32px));
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: 0 20px 50px -20px rgba(58, 52, 49, 0.45);
+  animation: dock-in 0.35s ease;
+}
+.dock-head { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 14px 10px; cursor: pointer; }
+.dock-title { flex: 1; font-size: 13.5px; }
+.dock-head strong { font-family: var(--f-display); font-weight: 400; font-size: 22px; font-variant-numeric: tabular-nums; }
+.dock-chevron { font-size: 12px; color: var(--ink-soft); }
+.dock-bar { height: 4px !important; margin: 0 14px 12px; }
+.dock-body { border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); padding: 10px 14px 14px; display: grid; gap: 10px; max-height: min(60vh, 460px); overflow-y: auto; }
+.dock-sub { margin: 0; font-size: 12.5px; color: var(--ink-soft); }
+.dock-gallery { font-family: var(--f-label); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; }
+.dock .up-list { max-height: none; }
+.dock.is-done { border-color: var(--ok); }
+.dock.is-warn { border-color: var(--danger); }
+@keyframes dock-in { from { opacity: 0; transform: translateY(10px); } }

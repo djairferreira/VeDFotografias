@@ -126,3 +126,6 @@ alter table photos add column if not exists category_id uuid references categori
 -- Escolha do álbum: 1 byte por foto em vez de uma tabela de seleção.
 alter table photos add column if not exists selected boolean not null default false;
 create index if not exists photos_selected_idx on photos (gallery_id) where selected;
+
+-- Ordem das fotos na galeria: 'upload' (ordem de envio), 'name_asc' ou 'name_desc'.
+alter table galleries add column if not exists photo_order text not null default 'upload';

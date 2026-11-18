@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { deletePhotos, setCover } from "@/app/actions/admin";
 
 export type GridPhoto = { id: string; filename: string; selected?: boolean };
@@ -36,6 +36,7 @@ export function PhotoGrid({
   const [pending, startTransition] = useTransition();
   const admin = mode === "admin";
 
+  const last = useRef<number | null>(null);
   const toggle = (id: string) =>
     setSelected((s) => {
       const n = new Set(s);
@@ -43,6 +44,24 @@ export function PhotoGrid({
       else n.add(id);
       return n;
     });
+
+  /** Clique com Shift: marca (ou desmarca) todas entre a última clicada e esta. */
+  const toggleAt = (i: number, shift: boolean) => {
+    const id = photos[i].id;
+    if (shift && last.current !== null && last.current < photos.length) {
+      const [a, b] = [Math.min(last.current, i), Math.max(last.current, i)];
+      const turnOn = !selected.has(id);
+      setSelected((s) => {
+        const n = new Set(s);
+        for (const p of photos.slice(a, b + 1)) {
+          if (turnOn) n.add(p.id);
+          else n.delete(p.id);
+        }
+        return n;
+      });
+    } else toggle(id);
+    last.current = i;
+  };
 
   const step = useCallback(
     (d: number) => setOpen((i) => (i === null ? i : (i + d + photos.length) % photos.length)),
@@ -90,6 +109,7 @@ export function PhotoGrid({
       <div className="toolbar">
         <span className="toolbar-info">
           {selected.size ? `${selected.size} de ${photos.length} selecionadas` : `${photos.length} fotos`}
+          <span className="toolbar-tip"> · Shift + clique marca várias de uma vez</span>
         </span>
         <div className="actions">
           {selected.size > 0 ? (
@@ -159,7 +179,18 @@ export function PhotoGrid({
       <div className="grid">
         {photos.map((p, i) => (
           <div key={p.id} className={`tile${selected.has(p.id) ? " selected" : ""}`}>
-            <button type="button" className="open" onClick={() => setOpen(i)} aria-label={`Ver ${p.filename}`}>
+            <button
+              type="button"
+              className="open"
+              onClick={(e) => {
+                // Shift ou Ctrl/Cmd: seleciona em vez de abrir.
+                if (e.shiftKey || e.metaKey || e.ctrlKey) {
+                  e.preventDefault();
+                  toggleAt(i, e.shiftKey);
+                } else setOpen(i);
+              }}
+              aria-label={`Ver ${p.filename}`}
+            >
               <img src={`/api/media/${p.id}/mini`} alt={p.filename} loading="lazy" decoding="async" />
             </button>
             <button
@@ -167,7 +198,7 @@ export function PhotoGrid({
               className="tile-check"
               aria-pressed={selected.has(p.id)}
               aria-label={selected.has(p.id) ? "Desmarcar" : "Selecionar"}
-              onClick={() => toggle(p.id)}
+              onClick={(e) => toggleAt(i, e.shiftKey)}
             >
               <Check />
             </button>

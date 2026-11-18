@@ -401,3 +401,47 @@ export async function clearSelection(form: FormData) {
   await query("update galleries set selection_submitted_at = null, selection_name = null, selection_note = null where id = $1", [id]);
   revalidatePath("/admin", "layout");
 }
+
+/* ---------- Ordem das fotos ---------- */
+
+const ORDERS = ["upload", "name_asc", "name_desc"] as const;
+type PhotoOrder = (typeof ORDERS)[number];
+
+/** Reordena as posições das fotos conforme o modo salvo na galeria. Nome em ordem natural (IMG_2 antes de IMG_10). */
+async function resortPhotos(galleryId: string, mode: PhotoOrder) {
+  const rows = await query<{ id: string; filename: string; created_at: Date }>(
+    "select id, filename, created_at from photos where gallery_id = $1",
+    [galleryId],
+  );
+  const collator = new Intl.Collator("pt-BR", { numeric: true, sensitivity: "base" });
+  rows.sort((a, b) =>
+    mode === "upload"
+      ? +a.created_at - +b.created_at
+      : (mode === "name_asc" ? 1 : -1) * collator.compare(a.filename, b.filename) || +a.created_at - +b.created_at,
+  );
+  if (!rows.length) return;
+  // Uma única atualização para todas as fotos.
+  await query(
+    `update photos p set position = v.pos - 1
+       from unnest($2::uuid[]) with ordinality as v(id, pos)
+      where p.id = v.id and p.gallery_id = $1`,
+    [galleryId, rows.map((r) => r.id)],
+  );
+}
+
+export async function setPhotoOrder(galleryId: string, mode: string) {
+  await requireAdmin();
+  if (!isUuid(galleryId) || !ORDERS.includes(mode as PhotoOrder)) return;
+  await query("update galleries set photo_order = $2 where id = $1", [galleryId, mode]);
+  await resortPhotos(galleryId, mode as PhotoOrder);
+  revalidatePath(`/admin/galerias/${galleryId}`);
+}
+
+/** Chamado ao fim de um lote de envio: mantém a ordem escolhida também para as fotos novas. */
+export async function applyPhotoOrder(galleryId: string) {
+  await requireAdmin();
+  if (!isUuid(galleryId)) return;
+  const g = await one<{ photo_order: PhotoOrder }>("select photo_order from galleries where id = $1", [galleryId]);
+  if (g && g.photo_order !== "upload") await resortPhotos(galleryId, g.photo_order);
+  revalidatePath(`/admin/galerias/${galleryId}`);
+}

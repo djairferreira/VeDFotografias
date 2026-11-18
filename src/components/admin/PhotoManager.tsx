@@ -1,27 +1,29 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { addCategory, deleteCategory, moveCategory, renameCategory, setPhotosCategory } from "@/app/actions/admin";
+import { addCategory, deleteCategory, moveCategory, renameCategory, setPhotoOrder, setPhotosCategory } from "@/app/actions/admin";
 import { Uploader } from "./Uploader";
 import { PhotoGrid } from "@/components/PhotoGrid";
 
 type Cat = { id: string; name: string };
-type P = { id: string; filename: string; c: string | null; s: boolean };
+type P = { id: string; filename: string; c: string | null; s: boolean; size: string };
 
 export function PhotoManager({
   galleryId,
-  blob,
+  galleryTitle,
   coverId,
   categories,
   photos,
   album,
+  order,
 }: {
   galleryId: string;
-  blob: boolean;
+  galleryTitle: string;
   coverId: string | null;
   categories: Cat[];
   photos: P[];
   album: boolean;
+  order: string;
 }) {
   const [filter, setFilter] = useState<string>("");
   const [adding, setAdding] = useState(false);
@@ -141,10 +143,34 @@ export function PhotoManager({
             </select>
           </label>
         )}
-        <Uploader galleryId={galleryId} blob={blob} categoryId={uploadCat || null} />
+        <Uploader
+          galleryId={galleryId}
+          galleryTitle={galleryTitle}
+          categoryId={uploadCat || null}
+          existing={photos.map((p) => ({ name: p.filename, size: Number(p.size) }))}
+        />
       </section>
 
       <section className="block">
+        {photos.length > 1 && (
+          <label className="field order-field">
+            <span>Ordem das fotos na galeria</span>
+            <select
+              id="photo-order"
+              value={order}
+              disabled={pending}
+              onChange={(e) => {
+                const v = e.target.value;
+                start(() => setPhotoOrder(galleryId, v));
+              }}
+            >
+              <option value="upload">Ordem de envio</option>
+              <option value="name_asc">Nome do arquivo (A → Z)</option>
+              <option value="name_desc">Nome do arquivo (Z → A)</option>
+            </select>
+            <small>{order === "upload" ? "Como foram enviadas." : "As próximas fotos enviadas também entram nesta ordem."}</small>
+          </label>
+        )}
         <PhotoGrid
           photos={shown.map((p) => ({ id: p.id, filename: p.filename, selected: album && p.s }))}
           galleryId={galleryId}

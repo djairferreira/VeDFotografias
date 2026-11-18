@@ -6,6 +6,8 @@ import { getSiteContent } from "@/lib/site-content";
 import { logout } from "@/app/actions/auth";
 import { SideNav } from "@/components/admin/SideNav";
 import { Logo } from "@/components/Logo";
+import { UploadProvider } from "@/components/admin/UploadQueue";
+import { blobEnabled } from "@/lib/storage";
 import "../panel.css";
 
 export const metadata: Metadata = { title: { default: "Painel", template: "%s · Painel" }, robots: { index: false } };
@@ -38,7 +40,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </form>
         </div>
       </aside>
-      <main className="main">{children}</main>
+      <main className="main">
+        <UploadProvider blob={blobEnabled()}>{children}</UploadProvider>
+      </main>
     </div>
   );
 }
